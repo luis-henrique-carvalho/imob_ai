@@ -8,6 +8,13 @@
       "when": 1771621005514,
       "tag": "0000_glamorous_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771631225958,
+      "tag": "0001_nappy_loki",
+      "breakpoints": true
     }
   ]
 }
