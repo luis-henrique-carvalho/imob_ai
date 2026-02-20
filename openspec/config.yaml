@@ -1,0 +1,47 @@
+schema: spec-driven
+
+context: |
+  # Imob AI — Assistente WhatsApp + CRM para Corretores
+
+  ## Domain
+  Plataforma SaaS de "SDR como Serviço" para o mercado imobiliário.
+  Um bot de WhatsApp impulsionado por IA que atende leads em tempo real, faz a qualificação (orçamento, intenção, urgência) e os organiza em um mini-CRM Kanban.
+  Cada usuário visualiza apenas seus próprios dados (userId scoping em todas as queries).
+  Modelo de negócio freemium com plano Pro (R$ 149,90/mês) e Starter (R$ 59,90/mês).
+
+  ### Core Features (MVP):
+  - Autenticação e cadastro do corretor
+  - Kanban Board minimalista (Novo, Qualificado, Em Atendimento, Perdidos)
+  - Integração básica de WhatsApp (webhook para receber/enviar via API Cloud Meta/Evolution API)
+  - Motor de IA de Qualificação (OpenAI via Structured Outputs)
+  - Cadastro básico de imóveis (Base de Conhecimento da IA)
+  - Handover (Assumir conversa desligando o bot)
+
+  ## Reference
+  **Tech Stack, Project Structure, Patterns, and Conventions are documented in `docs/PATTERNS.md`.**
+  Always consult this file for:
+  - Route groups e feature module structure
+  - Page, Server Actions, e Form patterns
+  - Database (Drizzle ORM) conventions e schemas
+  - Auth utilities e flows (Better Auth)
+  - UI/Component best practices (shadcn/ui e Tailwind CSS com padrão visual limpo)
+
+rules:
+  proposal:
+    - Sempre considerar o feature module pattern existente (pages → actions → components → schemas → hooks)
+    - Propostas devem especificar a qual route group a feature pertence — (private), (public) ou api/auth
+    - Incluir mudanças de schema do banco quando a feature requer novas tabelas ou colunas, respeitando as conventions do Drizzle e user-owned entities (com FK em cascade)
+    - Considerar isolamento de dados por usuário (userId filtering) em absolutamento todas as operações de banco
+    - Todos os textos voltados ao usuário devem seguir as diretrizes com foco em pt-BR
+    - Respeitar estritamente o Design Guidelines visual focado em "ferramenta limpa B2B SaaS"
+    - Mencionar se a feature envolve chamadas externas como LLMs (OpenAI) ou Webhooks do WhatsApp
+
+  tasks:
+    - Quebrar tarefas em chunks de no máximo 2 horas
+    - Cada tarefa deve especificar arquivos afetados e o pattern que seguem (ex: page, action, schemas)
+    - Server actions DEVEM usar next-safe-action (`actionClient`), `use server` e validação Zod `.inputSchema()`
+    - Incluir criação de Zod schema como tarefa separada quando iterando em novos formulários, exportando tipos com `z.infer`
+    - Tarefas de migração de banco de dados devem ser separadas das tarefas de código, e mencionar scripts como `npm run db:generate / npm run db:migrate`
+    - Sempre incluir chamadas de `revalidatePath` ao final de actions de mutação
+    - Incluir tipagem TypeScript (`typeof table.$inferSelect`) como tarefa quando criamos/modificamos banco
+    - Requerer componentes React Client (`"use client"`) onde interação stateful for necessária, especialmente para forms usando React Hook Form e modais
