@@ -1,11 +1,8 @@
 "use server";
 
 import { db } from "@/db";
-import { opportunity } from "@/db/schema/opportunity-schema";
-import { lead } from "@/db/schema/lead-schema";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
-import { eq, desc } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
@@ -23,22 +20,17 @@ export const getOpportunities = actionClient
         }
 
         try {
-            const data = await db
-                .select()
-                .from(opportunity)
-                .innerJoin(lead, eq(opportunity.leadId, lead.id))
-                .where(eq(opportunity.userId, session.user.id))
-                .orderBy(desc(opportunity.createdAt));
-
-            // Return as the OpportunityWithLead format
-            const mappedData = data.map((row) => ({
-                ...row.opportunity,
-                lead: row.lead,
-            }));
+            const data = await db.query.opportunity.findMany({
+                where: (opp, { eq }) => eq(opp.userId, session.user.id),
+                orderBy: (opp, { desc }) => [desc(opp.createdAt)],
+                with: {
+                    lead: true,
+                },
+            });
 
             return {
                 success: true,
-                data: mappedData,
+                data,
             };
         } catch (error) {
             return { success: false, serverError: "Erro ao buscar oportunidades." };

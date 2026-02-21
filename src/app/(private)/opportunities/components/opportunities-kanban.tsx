@@ -17,6 +17,7 @@ import {
 import { OpportunityWithLead } from "../types";
 import { updateOpportunityStatus } from "../actions/update-opportunity-status";
 import { toggleAiPause } from "../actions/toggle-ai-pause";
+import { LeadDetailsSheet } from "./lead-details-sheet";
 
 const COLUMN_TITLES: Record<string, string> = {
     NEW: "Novos",
@@ -45,6 +46,14 @@ export function OpportunitiesKanban({ initialData }: OpportunitiesKanbanProps) {
         groupOpportunities(initialData)
     );
     const [isPending, startTransition] = React.useTransition();
+
+    const [selectedOpportunityId, setSelectedOpportunityId] = React.useState<string | null>(null);
+    const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+
+    const handleCardClick = React.useCallback((opp: OpportunityWithLead) => {
+        setSelectedOpportunityId(opp.id);
+        setIsSheetOpen(true);
+    }, []);
 
     React.useEffect(() => {
         setColumns(groupOpportunities(initialData));
@@ -111,44 +120,52 @@ export function OpportunitiesKanban({ initialData }: OpportunitiesKanbanProps) {
     };
 
     return (
-        <Kanban
-            value={columns}
-            onValueChange={handleValueChange}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            getItemValue={(item) => item.id}
-        >
-            <KanbanBoard className="grid auto-rows-fr grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[calc(80vh-10rem)]">
-                {Object.entries(columns).map(([columnValue, tasks]) => (
-                    <TaskColumn key={columnValue} value={columnValue} tasks={tasks} />
-                ))}
-            </KanbanBoard>
-            <KanbanOverlay>
-                {({ value, variant }) => {
-                    if (variant === "column") {
-                        const tasks = columns[value] ?? [];
-                        return <TaskColumn value={value} tasks={tasks} />;
-                    }
+        <>
+            <Kanban
+                value={columns}
+                onValueChange={handleValueChange}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                getItemValue={(item) => item.id}
+            >
+                <KanbanBoard className="grid auto-rows-fr grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-[calc(80vh-10rem)]">
+                    {Object.entries(columns).map(([columnValue, tasks]) => (
+                        <TaskColumn key={columnValue} value={columnValue} tasks={tasks} onCardClick={handleCardClick} />
+                    ))}
+                </KanbanBoard>
+                <KanbanOverlay>
+                    {({ value, variant }) => {
+                        if (variant === "column") {
+                            const tasks = columns[value] ?? [];
+                            return <TaskColumn value={value} tasks={tasks} />;
+                        }
 
-                    const opp = Object.values(columns)
-                        .flat()
-                        .find((task) => task.id === value);
+                        const opp = Object.values(columns)
+                            .flat()
+                            .find((task) => task.id === value);
 
-                    if (!opp) return null;
+                        if (!opp) return null;
 
-                    return <OpportunityCard opp={opp} />;
-                }}
-            </KanbanOverlay>
-        </Kanban>
+                        return <OpportunityCard opp={opp} onClick={() => handleCardClick(opp)} />;
+                    }}
+                </KanbanOverlay>
+            </Kanban>
+            <LeadDetailsSheet
+                opportunityId={selectedOpportunityId}
+                isOpen={isSheetOpen}
+                onClose={() => setIsSheetOpen(false)}
+            />
+        </>
     );
 }
 
 interface OpportunityCardProps
     extends Omit<React.ComponentProps<typeof KanbanItem>, "value"> {
     opp: OpportunityWithLead;
+    onClick?: () => void;
 }
 
-function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
+function OpportunityCard({ opp, onClick, ...props }: OpportunityCardProps) {
     const [isAiPaused, setIsAiPaused] = React.useState(opp.isAiPaused);
 
     const handleToggleAi = async (checked: boolean) => {
@@ -167,7 +184,12 @@ function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
 
     return (
         <KanbanItem key={opp.id} value={opp.id} asChild {...props}>
-            <div className="rounded-md border bg-card p-3 shadow-xs hover:border-primary/50 transition-colors cursor-grab active:cursor-grabbing">
+            <div
+                className="rounded-md border bg-card p-3 shadow-xs hover:border-primary/50 transition-colors cursor-grab active:cursor-grabbing"
+                onClick={() => {
+                    if (onClick) onClick();
+                }}
+            >
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
                         <span className="line-clamp-1 font-medium text-sm">
@@ -196,7 +218,10 @@ function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
                         )}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between border-t pt-2 cursor-default">
+                    <div
+                        className="mt-2 flex items-center justify-between border-t pt-2 cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex items-center gap-1.5 object-contain">
                             {isAiPaused ? (
                                 <UserIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -224,9 +249,10 @@ function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
 interface TaskColumnProps
     extends Omit<React.ComponentProps<typeof KanbanColumn>, "children"> {
     tasks: OpportunityWithLead[];
+    onCardClick?: (opp: OpportunityWithLead) => void;
 }
 
-function TaskColumn({ value, tasks, ...props }: TaskColumnProps) {
+function TaskColumn({ value, tasks, onCardClick, ...props }: TaskColumnProps) {
     return (
         <KanbanColumn
             value={value}
@@ -248,7 +274,7 @@ function TaskColumn({ value, tasks, ...props }: TaskColumnProps) {
             </div>
             <div className="flex flex-col gap-2 p-0.5 min-h-[50px]">
                 {tasks.map((task) => (
-                    <OpportunityCard key={task.id} opp={task} asHandle />
+                    <OpportunityCard key={task.id} opp={task} asHandle onClick={() => onCardClick && onCardClick(task)} />
                 ))}
             </div>
         </KanbanColumn>

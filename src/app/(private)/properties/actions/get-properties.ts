@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { property } from "@/db/schema/property-schema";
 import { auth } from "@/lib/auth";
 import { actionClient } from "@/lib/safe-action";
-import { and, eq, ilike, sql, desc } from "drizzle-orm";
+import { and, eq, ilike, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
 
@@ -39,13 +39,12 @@ export const getProperties = actionClient
             const whereClause = and(...conditions);
 
             const [properties, countResult] = await Promise.all([
-                db
-                    .select()
-                    .from(property)
-                    .where(whereClause)
-                    .orderBy(desc(property.createdAt))
-                    .limit(limit)
-                    .offset(offset),
+                db.query.property.findMany({
+                    where: whereClause,
+                    orderBy: (prop, { desc }) => [desc(prop.createdAt)],
+                    limit,
+                    offset,
+                }),
                 db
                     .select({ count: sql<number>`count(*)` })
                     .from(property)
