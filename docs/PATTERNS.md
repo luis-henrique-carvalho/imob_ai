@@ -48,46 +48,94 @@ All files use **kebab-case**.
 
 ## 3. Page Pattern (`page.tsx`)
 
+O `page.tsx` deve ser o esqueleto da página, carregando apenas os dados essenciais de autenticação e parâmetros. O carregamento de dados pesados deve ser delegado a um sub-componente envolto em `Suspense` para permitir **streaming**.
+
 ```tsx
-const Page = async ({ searchParams }: { searchParams: Promise<{ query?: string; page?: string }> }) => {
+const Page = async ({
+  searchParams
+}: {
+  searchParams: Promise<{ query?: string; page?: string }>
+}) => {
   await requireFullAuth();
   const { query, page } = await searchParams;
-  return (
-    <Suspense fallback={<PagesLoading title="..." description="..." showActions showSearch columns={6} rows={10} />}>
-      <FeatureContent query={query} page={page || "1"} />
-    </Suspense>
-  );
-};
-```
 
-Flow: `requireFullAuth()` → `await searchParams` → `<Suspense>` with `<PagesLoading>` → delegate to Content.
-
-## 4. Content Component (Server)
-
-```tsx
-const Content = async ({ query, page }: Props) => {
-  const { data } = await getEntities({ limit: "10", page: String(query ? 1 : page), query });
-  if (!data?.entities) { /* render error UI */ }
   return (
     <PageContainer>
       <PageHeader>
         <PageHeaderContent>
-          <PageTitle>Title</PageTitle>
-          <PageDescription>Description</PageDescription>
+          <PageTitle>Título</PageTitle>
+          <PageDescription>Descrição da página.</PageDescription>
         </PageHeaderContent>
-        <PageActions><AddEntityButton /></PageActions>
+        <PageActions>
+          <AddButton />
+        </PageActions>
       </PageHeader>
       <PageContent>
-        <SearchInput placeholder="..." />
-        <DataTable columns={columns} data={entities} />
-        <DynamicPagination currentPage={page} totalPages={totalPages} />
+        <div className="space-y-4">
+          <SearchInput placeholder="Buscar..." />
+
+          <Suspense
+            key={(query || "") + (page || "1")}
+            fallback={<TableSkeleton />}
+          >
+            <TableContainer query={query} page={page || "1"} />
+          </Suspense>
+        </div>
       </PageContent>
     </PageContainer>
   );
 };
 ```
 
-## 5. Server Actions
+Flow: `requireFullAuth()` → `await searchParams` → `<Suspense>` with `<PagesLoading>` → delegate to Content.
+
+## 4. Table Container Component (Server)
+
+Este componente encapsula a lógica de busca de dados (`fetch`). Ao ser separado da `page.tsx`, ele permite que o Next.js renderize o cabeçalho e a busca instantaneamente.
+
+```tsx
+const TableContainer = async ({ query, page }: Props) => {
+  const result = await getEntities({
+    limit: "10",
+    page: String(page),
+    query
+  });
+
+  const data = result?.data;
+  if (!data?.success) { /* render error UI */ }
+
+  const { entities, totalPages, currentPage } = data.data;
+
+  return (
+    <div className="space-y-4">
+      <DataTable columns={columns} data={entities} />
+      <DynamicPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+      />
+    </div>
+  );
+};
+```
+
+## 5. Loading & Suspense Strategy
+
+Para garantir a melhor UX, seguimos dois níveis de carregamento:
+
+### A. `loading.tsx` (Root/Module level)
+- **Uso:** Carregamento inicial da rota (ex: ao clicar no menu lateral).
+- **Fallback:** Skeleton completo da página (Header + Search + Table).
+- **Objetivo:** Fornecer feedback instantâneo de navegação.
+
+### B. `Suspense` Granular (Page level)
+- **Uso:** Atualizações de dados por filtro, busca ou paginação.
+- **Fallback:** Skeleton apenas da área de dados (ex: `TableSkeleton`).
+- **Trigger:** Atribuir uma `key` ao `<Suspense>` contendo os parâmetros que disparam a busca (ex: `query + page`).
+- **Por que:** Evita o reset do foco nos inputs de busca e mantém o contexto da página visível enquanto os dados novos carregam.
+
+---
+
+## 6. Server Actions
 
 All use `"use server"`, `actionClient` from `next-safe-action`, and `auth.api.getSession()` for authentication.
 
@@ -134,11 +182,11 @@ export const createHabitAction = actionClient
 
 Always `revalidatePath()` after mutations.
 
-## 6. Auth
+## 7. Auth
 
 Use Better Auth
 
-## 7. Zod Schemas
+## 8. Zod Schemas
 
 File: `schemas/upsert-<entity>-schema.ts`. Always export both schema and type. Validation messages in **pt-BR**.
 
@@ -149,7 +197,7 @@ export type UpsertEntityFormData = z.infer<typeof upsertEntitySchema>;
 
 Naming: `upsert<Entity>Schema` + `Upsert<Entity>FormData`. Used in both Server Action (`.inputSchema()`) and form (`zodResolver()`).
 
-## 8. Form Pattern
+## 9. Form Pattern
 
 ```tsx
 "use client";
@@ -186,7 +234,7 @@ const Form = ({ entity, onSuccess, isOpen }: Props) => {
 };
 ```
 
-## 9. Table Columns
+## 10. Table Columns
 
 ```tsx
 "use client";
@@ -202,7 +250,7 @@ export const columns: ColumnDef<Entity>[] = [
 
 `TableActions` uses `useState` for edit/delete `Dialog` state.
 
-## 10. Database (Drizzle ORM)
+## 11. Database (Drizzle ORM)
 
 Schema file: `src/drizzle/schema.ts`. Commands: `npm run db:generate`, `npm run db:migrate`, `npm run db:studio`.
 
