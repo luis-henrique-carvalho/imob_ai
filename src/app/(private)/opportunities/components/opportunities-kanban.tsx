@@ -156,6 +156,7 @@ function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
         setIsAiPaused(checked);
 
         const res = await toggleAiPause({ id: opp.id, isAiPaused: checked });
+
         if (res?.data?.success) {
             toast.success(checked ? "IA Pausada para este lead" : "IA reativada para este lead");
         } else {
@@ -206,19 +207,11 @@ function OpportunityCard({ opp, ...props }: OpportunityCardProps) {
                                 {isAiPaused ? "Humano (Pausado)" : "IA Ativa"}
                             </span>
                         </div>
-                        <div
-                            onPointerDownCapture={(e) => {
-                                // Stop drag event when interacting with switch
-                                e.stopPropagation();
-                            }}
-                            onClickCapture={(e) => {
-                                e.stopPropagation();
-                            }}
-                        >
+                        <div className="cursor-default flex items-center">
                             <Switch
                                 checked={isAiPaused}
                                 onCheckedChange={handleToggleAi}
-                                className="scale-75 origin-right pointer-events-auto"
+                                className="scale-75 origin-right"
                             />
                         </div>
                     </div>
