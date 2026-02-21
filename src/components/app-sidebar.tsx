@@ -53,8 +53,8 @@ const data = {
       icon: IconBuilding,
     },
     {
-      title: "Lifecycle",
-      url: "#",
+      title: "Oportunidades",
+      url: "/opportunities",
       icon: IconListDetails,
     },
     {
